@@ -1,0 +1,18 @@
+# Ignore basic files
+
+# dependencies
+/node_modules
+/.pnp
+/.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+Thumbs.db
+npm-debug.log
+yarn-error.log

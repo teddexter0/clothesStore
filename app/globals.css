@@ -1,0 +1,38 @@
+/* Fixed app/globals.css - Replace the @layer components section */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-primary border border-gray-200 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-all duration-200;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-white px-6 py-3 rounded-lg font-medium hover:bg-red-500 transition-all duration-200;
+  }
+
+  .filter-tag {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer;
+  }
+
+  .filter-tag.active {
+    @apply bg-primary text-white;
+  }
+
+  /* Fixed: Remove 'group' from @apply, add it separately */
+  .product-card {
+    @apply bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer;
+  }
+}
