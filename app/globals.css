@@ -1,26 +1,143 @@
-/* Fixed app/globals.css - Replace the @layer components section */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   DEFAULT THEME — Year-round store colours
+   ============================================================ */
+:root,
+[data-season="default"] {
+  --color-primary: #1A1A1A;
+  --color-accent: #C9A96E;
+  --color-bg: #F7F5F2;
+  --color-text: #1A1A1A;
+  --hero-bg: linear-gradient(135deg, #1A1A1A 0%, #2A2A2A 100%);
+  --banner-bg: #1A1A1A;
+  --banner-text: #F7F5F2;
+}
+
+/* ============================================================
+   VALENTINE THEME — Feb 1–14
+   ============================================================ */
+[data-season="valentine"] {
+  --color-primary: #6B1F3A;
+  --color-accent: #F4A7B9;
+  --color-bg: #FFF5F7;
+  --color-text: #1A1A1A;
+  --hero-bg: linear-gradient(135deg, #6B1F3A 0%, #8B2A4A 100%);
+  --banner-bg: #6B1F3A;
+  --banner-text: #FFF5F7;
+}
+
+/* ============================================================
+   CHRISTMAS THEME — Dec 1–26
+   ============================================================ */
+[data-season="christmas"] {
+  --color-primary: #1C3A1C;
+  --color-accent: #D4AF37;
+  --color-bg: #FAFFF8;
+  --color-text: #1A1A1A;
+  --hero-bg: linear-gradient(135deg, #1C3A1C 0%, #2C4A2C 100%);
+  --banner-bg: #1C3A1C;
+  --banner-text: #FAFFF8;
+}
+
+/* ============================================================
+   EASTER THEME — Mar 20 – Apr 15
+   ============================================================ */
+[data-season="easter"] {
+  --color-primary: #3D5A3E;
+  --color-accent: #E8D5B0;
+  --color-bg: #FFFDF5;
+  --color-text: #1A1A1A;
+  --hero-bg: linear-gradient(135deg, #3D5A3E 0%, #4D6A4E 100%);
+  --banner-bg: #3D5A3E;
+  --banner-text: #FFFDF5;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
 @layer base {
   html {
     scroll-behavior: smooth;
+    background-color: var(--color-bg);
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
   }
 }
 
+/* ============================================================
+   SEASONAL BANNER & WHATSAPP FLOAT
+   ============================================================ */
+.seasonal-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background: var(--banner-bg);
+  color: var(--banner-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  position: relative;
+  z-index: 50;
+}
+
+.whatsapp-float {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #25D366;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4);
+  transition: transform 0.2s ease;
+  animation: whatsapp-pulse 4s ease-in-out infinite;
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.1);
+}
+
+@keyframes whatsapp-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4); }
+  50% { box-shadow: 0 4px 28px rgba(37, 211, 102, 0.7); }
+}
+
+/* ============================================================
+   COMPONENTS
+   ============================================================ */
 @layer components {
   .btn-primary {
-    @apply bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-105;
-  }
-  
-  .btn-secondary {
-    @apply bg-white text-primary border border-gray-200 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-all duration-200;
+    @apply text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 hover:scale-105;
+    background: var(--color-primary);
   }
 
   .btn-accent {
-    @apply bg-accent text-white px-6 py-3 rounded-lg font-medium hover:bg-red-500 transition-all duration-200;
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 hover:scale-105;
+    background: var(--color-accent);
+    color: var(--color-primary);
+  }
+
+  .btn-outline {
+    @apply px-6 py-3 rounded-lg font-medium border-2 transition-all duration-200;
+    border-color: var(--color-primary);
+    color: var(--color-primary);
   }
 
   .filter-tag {
@@ -28,11 +145,43 @@
   }
 
   .filter-tag.active {
-    @apply bg-primary text-white;
+    background: var(--color-primary);
+    color: white;
   }
 
-  /* Fixed: Remove 'group' from @apply, add it separately */
   .product-card {
     @apply bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer;
   }
+
+  /* New arrival badge */
+  .badge-new {
+    @apply absolute top-2 left-2 text-xs font-bold px-2 py-1 rounded-full text-white;
+    background: var(--color-accent);
+    color: var(--color-primary);
+  }
+}
+
+/* ============================================================
+   CHRISTMAS: Gold shimmer on product cards
+   ============================================================ */
+[data-season="christmas"] .product-card:hover {
+  box-shadow: 0 8px 32px rgba(212, 175, 55, 0.3);
+}
+
+/* ============================================================
+   AUTO-SCROLL MARQUEE for new arrivals strip
+   ============================================================ */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 20s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
 }
