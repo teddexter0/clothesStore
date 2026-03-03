@@ -19,7 +19,9 @@ export default function Home() {
     color: [],
     occasion: [],
     priceRange: '',
-    brand: []
+    brand: [],
+    isNew: false,
+    isSale: false,
   })
   const [products, setProducts] = useState([])
   const [filteredProducts, setFilteredProducts] = useState([])
@@ -207,53 +209,83 @@ export default function Home() {
     ]
   }
 
-  // Apply filters
+  // Apply filters — defensive: guards against missing/null fields on products
   useEffect(() => {
-    let filtered = products.filter(product => {
-      // Category filter
-      if (selectedFilters.category.length > 0 && !selectedFilters.category.includes(product.category)) return false
-      
-      // Gender filter
-      if (selectedFilters.gender.length > 0 && !selectedFilters.gender.includes(product.gender)) return false
-      
-      // Age filter
-      if (selectedFilters.age.length > 0 && !selectedFilters.age.includes(product.age)) return false
-      
-      // Size filter
-      if (selectedFilters.size.length > 0 && !selectedFilters.size.some(size => product.sizes.includes(size))) return false
-      
-      // Color filter
-      if (selectedFilters.color.length > 0 && !selectedFilters.color.some(color => product.colors.includes(color))) return false
-      
-      // Occasion filter
-      if (selectedFilters.occasion.length > 0 && !selectedFilters.occasion.some(occasion => product.occasion.includes(occasion))) return false
-      
-      // Brand filter
-      if (selectedFilters.brand.length > 0 && !selectedFilters.brand.includes(product.brand)) return false
-      
-      // Price range filter
+    const filtered = products.filter(product => {
+      // Category
+      if (selectedFilters.category.length > 0 &&
+          !selectedFilters.category.includes(product.category)) return false
+
+      // Gender — unisex matches any gender filter
+      if (selectedFilters.gender.length > 0 &&
+          product.gender !== 'unisex' &&
+          !selectedFilters.gender.includes(product.gender)) return false
+
+      // Age
+      if (selectedFilters.age.length > 0 &&
+          !selectedFilters.age.includes(product.age)) return false
+
+      // Size — product must carry at least one selected size
+      if (selectedFilters.size.length > 0) {
+        const productSizes = Array.isArray(product.sizes) ? product.sizes : []
+        if (!selectedFilters.size.some(s => productSizes.includes(s))) return false
+      }
+
+      // Color — product must carry at least one selected color
+      if (selectedFilters.color.length > 0) {
+        const productColors = Array.isArray(product.colors) ? product.colors : []
+        if (!selectedFilters.color.some(c => productColors.includes(c))) return false
+      }
+
+      // Occasion
+      if (selectedFilters.occasion.length > 0) {
+        const productOccasions = Array.isArray(product.occasion) ? product.occasion : []
+        if (!selectedFilters.occasion.some(o => productOccasions.includes(o))) return false
+      }
+
+      // Brand
+      if (selectedFilters.brand.length > 0 &&
+          !selectedFilters.brand.includes(product.brand)) return false
+
+      // Price range — handles "10000+" correctly via the Infinity fallback
       if (selectedFilters.priceRange) {
-        const [min, max] = selectedFilters.priceRange.split('-').map(p => p.replace('+', ''))
-        const minPrice = parseInt(min)
-        const maxPrice = max ? parseInt(max) : Infinity
+        const parts = selectedFilters.priceRange.replace('+', '').split('-')
+        const minPrice = parseInt(parts[0], 10) || 0
+        const maxPrice = parts[1] !== undefined ? parseInt(parts[1], 10) : Infinity
         if (product.price < minPrice || product.price > maxPrice) return false
       }
-      
+
+      // Quick-toggle: New Arrivals
+      if (selectedFilters.isNew && !product.isNew) return false
+
+      // Quick-toggle: Sale items
+      if (selectedFilters.isSale && !product.isSale) return false
+
       return true
     })
-    
+
     setFilteredProducts(filtered)
   }, [selectedFilters, products])
 
   const toggleFilter = (category, value) => {
-    setSelectedFilters(prev => ({
-      ...prev,
-      [category]: category === 'priceRange' 
-        ? value 
-        : prev[category].includes(value)
-          ? prev[category].filter(item => item !== value)
-          : [...prev[category], value]
-    }))
+    setSelectedFilters(prev => {
+      // Boolean toggles (isNew, isSale)
+      if (category === 'isNew' || category === 'isSale') {
+        return { ...prev, [category]: !prev[category] }
+      }
+      // Single-value radio (priceRange)
+      if (category === 'priceRange') {
+        return { ...prev, priceRange: prev.priceRange === value ? '' : value }
+      }
+      // Multi-select arrays — toggle in/out
+      const current = prev[category]
+      return {
+        ...prev,
+        [category]: current.includes(value)
+          ? current.filter(item => item !== value)
+          : [...current, value],
+      }
+    })
   }
 
   const clearAllFilters = () => {
@@ -265,12 +297,16 @@ export default function Home() {
       color: [],
       occasion: [],
       priceRange: '',
-      brand: []
+      brand: [],
+      isNew: false,
+      isSale: false,
     })
   }
 
   const getActiveFiltersCount = () => {
-    return Object.values(selectedFilters).flat().filter(Boolean).length
+    const { isNew, isSale, priceRange, ...arrayFilters } = selectedFilters
+    const arrayCount = Object.values(arrayFilters).reduce((sum, arr) => sum + arr.length, 0)
+    return arrayCount + (priceRange ? 1 : 0) + (isNew ? 1 : 0) + (isSale ? 1 : 0)
   }
 
   return (
@@ -338,15 +374,40 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="hidden md:flex border-t border-gray-200 py-4">
-            <div className="flex space-x-8">
-              <a href="#new" className="text-gray-700 hover:text-primary font-medium">New Arrivals</a>
-              <a href="#women" className="text-gray-700 hover:text-primary font-medium">Women</a>
-              <a href="#men" className="text-gray-700 hover:text-primary font-medium">Men</a>
-              <a href="#kids" className="text-gray-700 hover:text-primary font-medium">Kids</a>
-              <a href="#accessories" className="text-gray-700 hover:text-primary font-medium">Accessories</a>
-              <a href="#sale" className="text-accent hover:text-red-600 font-medium">Sale</a>
+          {/* Navigation — each button drives the filter system */}
+          <nav className="hidden md:flex border-t border-gray-200 py-3">
+            <div className="flex space-x-1">
+              {[
+                { label: 'New Arrivals', filter: 'isNew',       value: true,          activeCheck: () => selectedFilters.isNew },
+                { label: 'Women',        filter: 'gender',      value: 'women',       activeCheck: () => selectedFilters.gender.includes('women') },
+                { label: 'Men',          filter: 'gender',      value: 'men',         activeCheck: () => selectedFilters.gender.includes('men') },
+                { label: 'Kids',         filter: 'gender',      value: 'kids',        activeCheck: () => selectedFilters.gender.includes('kids') },
+                { label: 'Accessories',  filter: 'category',    value: 'accessories', activeCheck: () => selectedFilters.category.includes('accessories') },
+                { label: 'Sale',         filter: 'isSale',      value: true,          activeCheck: () => selectedFilters.isSale },
+              ].map(({ label, filter, value, activeCheck }) => {
+                const isActive = activeCheck()
+                return (
+                  <button
+                    key={label}
+                    onClick={() => toggleFilter(filter, value)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-primary text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    } ${label === 'Sale' && !isActive ? 'text-accent' : ''}`}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+              {getActiveFiltersCount() > 0 && (
+                <button
+                  onClick={clearAllFilters}
+                  className="ml-4 px-3 py-2 text-xs text-gray-400 hover:text-gray-700 underline"
+                >
+                  Clear all
+                </button>
+              )}
             </div>
           </nav>
 
@@ -362,14 +423,28 @@ export default function Home() {
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
                   />
                 </div>
-                <nav className="flex flex-col space-y-2">
-                  <a href="#new" className="text-gray-700 hover:text-primary font-medium py-2">New Arrivals</a>
-                  <a href="#women" className="text-gray-700 hover:text-primary font-medium py-2">Women</a>
-                  <a href="#men" className="text-gray-700 hover:text-primary font-medium py-2">Men</a>
-                  <a href="#kids" className="text-gray-700 hover:text-primary font-medium py-2">Kids</a>
-                  <a href="#accessories" className="text-gray-700 hover:text-primary font-medium py-2">Accessories</a>
-                  <a href="#sale" className="text-accent hover:text-red-600 font-medium py-2">Sale</a>
-                </nav>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: 'New Arrivals', filter: 'isNew',      value: true,          activeCheck: () => selectedFilters.isNew },
+                    { label: 'Women',        filter: 'gender',     value: 'women',       activeCheck: () => selectedFilters.gender.includes('women') },
+                    { label: 'Men',          filter: 'gender',     value: 'men',         activeCheck: () => selectedFilters.gender.includes('men') },
+                    { label: 'Kids',         filter: 'gender',     value: 'kids',        activeCheck: () => selectedFilters.gender.includes('kids') },
+                    { label: 'Accessories',  filter: 'category',   value: 'accessories', activeCheck: () => selectedFilters.category.includes('accessories') },
+                    { label: 'Sale',         filter: 'isSale',     value: true,          activeCheck: () => selectedFilters.isSale },
+                  ].map(({ label, filter, value, activeCheck }) => (
+                    <button
+                      key={label}
+                      onClick={() => { toggleFilter(filter, value); setMobileMenuOpen(false) }}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${
+                        activeCheck()
+                          ? 'bg-primary text-white border-primary'
+                          : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -641,36 +716,40 @@ export default function Home() {
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium text-gray-700">Active filters:</span>
-                    {Object.entries(selectedFilters).map(([category, values]) => {
-                      if (category === 'priceRange' && values) {
-                        return (
-                          <span key={`${category}-${values}`} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary text-white">
-                            {filterOptions[category].find(opt => opt.value === values)?.label}
-                            <button
-                              onClick={() => toggleFilter(category, '')}
-                              className="ml-2 hover:text-gray-300"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </span>
-                        )
-                      }
-                      return Array.isArray(values) && values.map(value => (
-                        <span key={`${category}-${value}`} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary text-white">
-                          {filterOptions[category].find(opt => opt.value === value)?.label || value}
-                          <button
-                            onClick={() => toggleFilter(category, value)}
-                            className="ml-2 hover:text-gray-300"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+
+                    {/* Boolean quick-toggles */}
+                    {selectedFilters.isNew && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary text-white">
+                        New Arrivals
+                        <button onClick={() => toggleFilter('isNew')} className="ml-2 hover:text-gray-300"><X className="h-3 w-3" /></button>
+                      </span>
+                    )}
+                    {selectedFilters.isSale && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary text-white">
+                        Sale
+                        <button onClick={() => toggleFilter('isSale')} className="ml-2 hover:text-gray-300"><X className="h-3 w-3" /></button>
+                      </span>
+                    )}
+
+                    {/* Price range */}
+                    {selectedFilters.priceRange && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary text-white">
+                        {filterOptions.priceRange.find(opt => opt.value === selectedFilters.priceRange)?.label}
+                        <button onClick={() => toggleFilter('priceRange', selectedFilters.priceRange)} className="ml-2 hover:text-gray-300"><X className="h-3 w-3" /></button>
+                      </span>
+                    )}
+
+                    {/* Array filters */}
+                    {['category', 'gender', 'age', 'size', 'color', 'occasion', 'brand'].map(cat =>
+                      selectedFilters[cat].map(value => (
+                        <span key={`${cat}-${value}`} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary text-white">
+                          {filterOptions[cat]?.find(opt => opt.value === value)?.label || value}
+                          <button onClick={() => toggleFilter(cat, value)} className="ml-2 hover:text-gray-300"><X className="h-3 w-3" /></button>
                         </span>
                       ))
-                    })}
-                    <button
-                      onClick={clearAllFilters}
-                      className="text-xs text-gray-500 hover:text-primary underline"
-                    >
+                    )}
+
+                    <button onClick={clearAllFilters} className="text-xs text-gray-500 hover:text-primary underline">
                       Clear all
                     </button>
                   </div>
